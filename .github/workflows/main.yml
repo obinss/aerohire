@@ -10,6 +10,7 @@ env:
   REGISTRY: ghcr.io
   FRONTEND_IMAGE: ${{ github.repository }}/frontend
   BACKEND_IMAGE: ${{ github.repository }}/backend
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # ── Lint & Test Frontend ────────────────────────────────────────────────
@@ -28,7 +29,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: apps/web/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -87,6 +88,9 @@ jobs:
 
       - name: Install Playwright browsers
         run: playwright install chromium --with-deps
+
+      - name: Generate Prisma Python Client
+        run: prisma generate --schema=../../packages/db/schema.prisma
 
       - name: Run PyTest
         env:
