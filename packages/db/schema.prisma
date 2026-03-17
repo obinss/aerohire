@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator pyclient {
+  provider  = "prisma-client-py"
+  interface = "asyncio"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Enums ──────────────────────────────────────────────────────────────────
+
+enum AppStatus {
+  Saved
+  Auto_Applied
+  Interviewing
+  Rejected
+  Offer
+}
+
+enum DocType {
+  Custom_CV
+  Cover_Letter
+}
+
+enum SubscriptionTier {
+  free
+  pro
+  enterprise
+}
+
+// ── Models ─────────────────────────────────────────────────────────────────
+
+model User {
+  id               String           @id @default(cuid())
+  email            String           @unique
+  passwordHash     String?
+  oauthTokens      Json?            // Stores Gmail / LinkedIn OAuth tokens
+  subscriptionTier SubscriptionTier @default(free)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  profile      Profile?
+  applications Application[]
+
+  @@map("users")
+}
+
+model Profile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  parsedSkills    Json?    // Array of skill strings extracted by AI
+  baseResumeText  String?  // Raw text of the uploaded resume
+  experienceYears Int?
+  targetRoles     String[] // e.g. ["Software Engineer", "Backend Developer"]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Job {
+  id                     String    @id @default(cuid())
+  title                  String
+  company                String
+  description            String    @db.Text
+  url                    String    @unique
+  source                 String    // e.g. "linkedin", "indeed", "email-alert"
+  postedDate             DateTime?
+  requiredQualifications Json?     // Parsed array of requirement strings
+  createdAt              DateTime  @default(now())
+
+  applications Application[]
+
+  @@index([company])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+model Application {
+  id          String    @id @default(cuid())
+  userId      String
+  jobId       String
+  status      AppStatus @default(Saved)
+  matchScore  Float?    // 0.0 – 1.0 cosine similarity score
+  appliedDate DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job       Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  documents Document[]
+
+  @@unique([userId, jobId])
+  @@index([userId, status])
+  @@map("applications")
+}
+
+model Document {
+  id              String   @id @default(cuid())
+  applicationId   String
+  type            DocType
+  contentMarkdown String?  @db.Text
+  s3Url           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  application Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("documents")
+}
