@@ -7,7 +7,17 @@ class Settings(BaseSettings):
     # App
     DEBUG: bool = True
     ALLOWED_HOSTS: List[str] = ["*"]
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "https://aerohire.app"]
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000", 
+        "http://localhost:3001", 
+        "http://localhost:3002", 
+        "http://127.0.0.1:3000", 
+        "http://127.0.0.1:3001", 
+        "http://127.0.0.1:3002",
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+        "https://aerohire.app"
+    ]
 
     # Database
     DATABASE_URL: str = "postgresql://aerohire:secret@localhost:5432/aerohire"
