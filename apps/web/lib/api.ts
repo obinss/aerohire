@@ -42,6 +42,12 @@ export const authApi = {
             body: JSON.stringify({ email, password }),
         }),
 
+    oauthLogin: (email: string, provider: string, provider_id: string) =>
+        request<{ access_token: string; user: unknown }>("/auth/oauth", {
+            method: "POST",
+            body: JSON.stringify({ email, provider, provider_id }),
+        }),
+
     me: (token: string) =>
         request<unknown>("/users/me", { token }),
 

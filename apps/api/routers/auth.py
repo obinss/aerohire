@@ -65,3 +65,41 @@ async def login(body: LoginBody):
         return TokenResponse(access_token=token)
     finally:
         await db.disconnect()
+
+class OAuthBody(BaseModel):
+    email: EmailStr
+    provider: str
+    provider_id: str
+
+@router.post("/oauth", response_model=TokenResponse)
+async def oauth_login(body: OAuthBody):
+    db = Prisma()
+    await db.connect()
+    try:
+        user = await db.user.find_unique(where={"email": body.email})
+        if not user:
+            # Create user
+            data = {"email": body.email}
+            if body.provider == "google":
+                data["googleId"] = body.provider_id
+            elif body.provider == "apple":
+                data["appleId"] = body.provider_id
+                
+            user = await db.user.create(data=data)
+            await db.profile.create(data={"userId": user.id})
+        else:
+            # If user exists, but logs in with OAuth, we could link the provider ID here
+            # For brevity, we just issue the token if the emails match.
+            update_data = {}
+            if body.provider == "google" and not user.googleId:
+                update_data["googleId"] = body.provider_id
+            elif body.provider == "apple" and not user.appleId:
+                update_data["appleId"] = body.provider_id
+                
+            if update_data:
+                user = await db.user.update(where={"id": user.id}, data=update_data)
+                
+        token = create_access_token(subject=user.id)
+        return TokenResponse(access_token=token)
+    finally:
+        await db.disconnect()
