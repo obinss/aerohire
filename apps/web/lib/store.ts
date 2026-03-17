@@ -45,10 +45,10 @@ export interface User {
     email: string;
     subscriptionTier: "free" | "pro" | "enterprise";
     profile: {
-        baseResumeText: string | null;
-        parsedSkills: string[] | null;
-        experienceYears: number | null;
-        targetRoles: string[];
+        baseResumeText?: string;
+        parsedSkills?: string[];
+        experienceYears?: number;
+        targetRoles?: string[];
     } | null;
 }
 

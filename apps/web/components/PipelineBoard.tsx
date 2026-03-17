@@ -22,6 +22,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { JobCard } from "@/components/JobCard";
 import { ApplicationDrawer } from "@/components/ApplicationDrawer";
 import { Application, AppStatus, useAppStore } from "@/lib/store";
+import { useEffect } from "react";
+import { applicationsApi } from "@/lib/api";
 
 // ── Column Config ─────────────────────────────────────────────────────────
 
@@ -235,12 +237,34 @@ const MOCK_APPLICATIONS: Application[] = [
 // ── PipelineBoard ────────────────────────────────────────────────────────
 
 export function PipelineBoard() {
-    const { applications: storeApps, updateApplicationStatus, openDrawer } = useAppStore();
-    const [localApps, setLocalApps] = useState<Application[]>(
-        storeApps.length > 0 ? storeApps : MOCK_APPLICATIONS
-    );
+    const { applications: storeApps, updateApplicationStatus, openDrawer, setApplications, token } = useAppStore();
+    const [localApps, setLocalApps] = useState<Application[]>(storeApps);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [overColumnId, setOverColumnId] = useState<AppStatus | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchApps() {
+            if (!token) return;
+            try {
+                const results = await applicationsApi.list(token as string);
+                setApplications(results as any);
+                setLocalApps(results as any);
+            } catch (err) {
+                console.error("Failed to load apps", err);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        fetchApps();
+    }, [token, setApplications]);
+
+    // Keep local synced if store changes from outside
+    useEffect(() => {
+        if (!isLoading) {
+            setLocalApps(storeApps);
+        }
+    }, [storeApps, isLoading]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -282,15 +306,32 @@ export function PipelineBoard() {
 
             if (!newStatus || newStatus === draggedApp.status) return;
 
+            // Optimistic Update
             setLocalApps((prev) =>
                 prev.map((a) =>
                     a.id === draggedApp.id ? { ...a, status: newStatus as AppStatus } : a
                 )
             );
-            updateApplicationStatus(draggedApp.id, newStatus as AppStatus);
+            
+            // Try updating backed, if fails rollback
+            if (token) {
+                applicationsApi.updateStatus(token as string, draggedApp.id, newStatus as string).then(() => {
+                    updateApplicationStatus(draggedApp.id, newStatus as AppStatus);
+                }).catch(err => {
+                    console.error("Failed to update status", err);
+                    setLocalApps(storeApps); // Rollback
+                });
+            }
+
         },
-        [localApps, updateApplicationStatus]
+        [localApps, updateApplicationStatus, token, storeApps]
     );
+
+    if (isLoading) {
+        return <div className="min-h-[600px] flex items-center justify-center">
+             <div className="text-steel font-mono animate-pulse uppercase tracking-widest text-xs">Loading Pipeline...</div>
+        </div>
+    }
 
     return (
         <>

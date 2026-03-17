@@ -53,10 +53,10 @@ export default function LandingPage() {
                         <Link href="#pricing" className="text-steel-dark dark:text-steel hover:text-charcoal dark:hover:text-white transition-colors text-sm">
                             Pricing
                         </Link>
-                        <Link href="/dashboard" className="btn-secondary py-2 text-sm">
+                        <Link href="/login" className="btn-secondary py-2 text-sm">
                             Sign In
                         </Link>
-                        <Link href="/dashboard" className="btn-primary py-2 text-sm">
+                        <Link href="/register" className="btn-primary py-2 text-sm">
                             Start Free
                         </Link>
                     </div>
@@ -118,7 +118,7 @@ export default function LandingPage() {
                             </p>
 
                             <div className="flex flex-wrap gap-4">
-                                <Link href="/dashboard">
+                                <Link href="/register">
                                     <motion.button
                                         className="btn-primary text-base px-8 py-4"
                                         whileHover={{ scale: 1.02 }}
@@ -300,7 +300,7 @@ export default function LandingPage() {
                         <p className="text-steel font-sans mb-10 text-lg">
                             Join the executives already flying first class in their careers.
                         </p>
-                        <Link href="/dashboard">
+                        <Link href="/register">
                             <motion.button
                                 className="btn-primary text-base px-10 py-5"
                                 whileHover={{ scale: 1.03 }}

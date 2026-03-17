@@ -11,6 +11,7 @@ import {
     ChevronRight,
     BellRing,
     Upload,
+    LogOut,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -28,35 +29,14 @@ import {
 import { CVUploadModal } from "@/components/CVUploadModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAppStore } from "@/lib/store";
-
-// Mock data — replaced by real API data in production
-const activityData = [
-    { week: "W1", applications: 3, interviews: 0 },
-    { week: "W2", applications: 7, interviews: 1 },
-    { week: "W3", applications: 5, interviews: 2 },
-    { week: "W4", applications: 12, interviews: 3 },
-    { week: "W5", applications: 9, interviews: 4 },
-    { week: "W6", applications: 14, interviews: 5 },
-];
-
-const pipelineData = [
-    { name: "Saved", value: 8, color: "#8D96A8" },
-    { name: "Applied", value: 15, color: "#D4AF37" },
-    { name: "Interviewing", value: 5, color: "#60A5FA" },
-    { name: "Offer", value: 2, color: "#34D399" },
-];
+import { useEffect, useState } from "react";
+import { applicationsApi, authApi } from "@/lib/api";
+import { useRouter } from "next/navigation";
 
 const recentAlerts = [
     { title: "Principal Engineer", company: "Stripe", score: 94, time: "2m ago" },
     { title: "Staff Product Designer", company: "Linear", score: 91, time: "18m ago" },
     { title: "Engineering Manager", company: "Vercel", score: 87, time: "1h ago" },
-];
-
-const metrics = [
-    { label: "Active Applications", value: "30", delta: "+5 this week", icon: Briefcase, positive: true },
-    { label: "Avg. Match Score", value: "88%", delta: "+3% this month", icon: TrendingUp, positive: true },
-    { label: "Interviews Booked", value: "5", delta: "+2 this week", icon: Clock, positive: true },
-    { label: "Pending Auto-Apply", value: "12", delta: "4 new today", icon: Zap, positive: null },
 ];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -76,7 +56,75 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function DashboardPage() {
-    const { setCVModalOpen } = useAppStore();
+    const { setCVModalOpen, user, token, logout, setUser, setApplications, applications } = useAppStore();
+    const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!token) {
+             router.push("/login");
+             return;
+        }
+
+        async function loadData() {
+            try {
+                // Ensure profile is up to date
+                const userProfile = await authApi.me(token as string);
+                setUser(userProfile as any);
+
+                // Fetch real applications
+                const apps = await applicationsApi.list(token as string);
+                setApplications(apps as any);
+            } catch (err) {
+                 console.error("Failed to load dashboard data.", err);
+                 if ((err as Error).message.includes("401")) {
+                     logout();
+                     router.push("/login");
+                 }
+            } finally {
+                 setIsLoading(false);
+            }
+        }
+        loadData();
+    }, [token, router, setUser, setApplications, logout]);
+
+    if (isLoading) {
+        return <div className="min-h-screen bg-[#FAF9F6] dark:bg-charcoal flex items-center justify-center">
+            <div className="w-8 h-8 rounded-sm bg-gold flex items-center justify-center animate-pulse"><Plane className="w-4 h-4 text-charcoal rotate-45" /></div>
+        </div>;
+    }
+
+    // Prepare derived metrics from real applications
+    const activeApps = applications.filter(a => a.status !== "Rejected").length;
+    const interviewingApps = applications.filter(a => a.status === "Interviewing").length;
+    
+    // Average score across all apps with a score (default 0)
+    const appsWithScores = applications.filter(a => a.matchScore != null);
+    const avgScore = appsWithScores.length > 0 
+        ? Math.round((appsWithScores.reduce((acc, curr) => acc + (curr.matchScore || 0), 0) / appsWithScores.length) * 100) 
+        : 0;
+
+    const metrics = [
+        { label: "Active Applications", value: activeApps.toString(), delta: "", icon: Briefcase, positive: true },
+        { label: "Avg. Match Score", value: appsWithScores.length > 0 ? `${avgScore}%` : "-", delta: "", icon: TrendingUp, positive: true },
+        { label: "Interviews", value: interviewingApps.toString(), delta: "", icon: Clock, positive: true },
+        { label: "Saved Jobs", value: applications.filter(a => a.status === "Saved").length.toString(), delta: "", icon: Zap, positive: null },
+    ];
+
+    const pipelineData = [
+        { name: "Saved", value: applications.filter(a => a.status === "Saved").length, color: "#8D96A8" },
+        { name: "Applied", value: applications.filter(a => a.status === "Auto_Applied").length, color: "#D4AF37" },
+        { name: "Interviewing", value: applications.filter(a => a.status === "Interviewing").length, color: "#60A5FA" },
+        { name: "Offer", value: applications.filter(a => a.status === "Offer").length, color: "#34D399" },
+    ].filter(d => d.value > 0); // Hide empty rings
+
+    // Simple mock activity data (since we don't have historical weekly data in API yet)
+    const activityData = [
+        { week: "W1", applications: 3, interviews: 0 },
+        { week: "W2", applications: Math.max(0, activeApps - 10), interviews: 1 },
+        { week: "W3", applications: Math.max(0, activeApps - 5), interviews: Math.max(0, interviewingApps - 1) },
+        { week: "W4", applications: activeApps, interviews: interviewingApps },
+    ];
 
     return (
         <div className="min-h-screen bg-[#FAF9F6] dark:bg-charcoal text-charcoal dark:text-white hud-grid flex transition-colors duration-300">
@@ -104,19 +152,29 @@ export default function DashboardPage() {
                         <BellRing className="w-4 h-4" />
                         Alerts
                     </Link>
-                    <Link href="/dashboard" className="nav-item">
+                    <Link href="/ai-studio" className="nav-item">
                         <Zap className="w-4 h-4" />
                         AI Studio
                     </Link>
                 </nav>
 
-                <div className="pt-4 border-t border-white/5">
+                <div className="pt-4 border-t border-white/5 space-y-1">
                     <button
                         onClick={() => setCVModalOpen(true)}
                         className="nav-item w-full text-left"
                     >
                         <Upload className="w-4 h-4 text-gold" />
                         <span className="text-gold">Upload CV</span>
+                    </button>
+                    <button
+                        onClick={() => {
+                            logout();
+                            router.push("/");
+                        }}
+                        className="nav-item w-full text-left !text-red-400/80 hover:!text-red-400"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        <span>Logout</span>
                     </button>
                 </div>
 
@@ -148,7 +206,7 @@ export default function DashboardPage() {
                             <span className="text-gold-gradient">Commander.</span>
                         </h1>
                         <p className="text-steel-dark dark:text-steel text-sm mt-1 font-sans">
-                            You have 3 new high-match opportunities since your last session.
+                            {user?.profile?.baseResumeText ? "Your CV is locked and loaded." : "Upload your CV to unlock AI capabilities."}
                         </p>
                     </div>
                     <div className="flex items-center gap-2">

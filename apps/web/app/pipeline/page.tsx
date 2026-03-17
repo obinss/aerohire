@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import {
-    Briefcase, BarChart3, Zap, BellRing, Upload, SlidersHorizontal, Plane, CheckCircle2
+    Briefcase, BarChart3, Zap, BellRing, Upload, SlidersHorizontal, Plane, CheckCircle2, LogOut
 } from "lucide-react";
 import Link from "next/link";
 import { PipelineBoard } from "@/components/PipelineBoard";
@@ -11,7 +11,8 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAppStore } from "@/lib/store";
 
 export default function PipelinePage() {
-    const { setCVModalOpen } = useAppStore();
+    const { setCVModalOpen, logout } = useAppStore();
+    const router = import("next/navigation").then(m => m.useRouter);
 
     return (
         <div className="min-h-screen bg-[#FAF9F6] dark:bg-charcoal text-charcoal dark:text-white flex relative overflow-hidden transition-colors duration-300">
@@ -46,19 +47,29 @@ export default function PipelinePage() {
                         <BellRing className="w-4 h-4" />
                         <span className="font-medium text-[13px] tracking-wide">Alerts</span>
                     </Link>
-                    <Link href="/dashboard" className="nav-item group">
+                    <Link href="/ai-studio" className="nav-item group">
                         <Zap className="w-4 h-4" />
                         <span className="font-medium text-[13px] tracking-wide">AI Studio</span>
                     </Link>
                 </nav>
 
-                <div className="pt-4 border-t border-black/[0.04] dark:border-white/[0.04] mb-4">
+                <div className="pt-4 border-t border-black/[0.04] dark:border-white/[0.04] mb-4 space-y-1">
                     <button 
                         onClick={() => setCVModalOpen(true)} 
                         className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md border border-gold/20 bg-gold/5 hover:bg-gold/10 transition-colors text-left"
                     >
                         <Upload className="w-4 h-4 text-gold/80" />
                         <span className="text-gold text-[13px] font-medium tracking-wide">Upload CV Profile</span>
+                    </button>
+                    <button 
+                        onClick={() => {
+                            logout();
+                            if(typeof window !== "undefined") window.location.href = "/";
+                        }} 
+                        className="w-full flex items-center gap-3 px-4 py-2.5 rounded-md transition-colors text-left text-red-500/80 hover:text-red-500 hover:bg-black/[0.04] dark:hover:bg-white/[0.05]"
+                    >
+                        <LogOut className="w-4 h-4" />
+                        <span className="text-[13px] font-medium tracking-wide">Logout</span>
                     </button>
                 </div>
 
