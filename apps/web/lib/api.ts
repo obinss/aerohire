@@ -103,29 +103,35 @@ export const documentsApi = {
 // ── AI API ────────────────────────────────────────────────────────────────
 
 export const aiApi = {
-    parseCV: (token: string, cvText: string) =>
-        request<{ skills: string[]; experience_years: number; education: unknown[]; tools: string[] }>(
-            "/ai/parse-cv",
-            {
-                method: "POST",
-                token,
-                body: JSON.stringify({ cv_text: cvText }),
-            }
-        ),
-
-    generateCoverLetter: (token: string, applicationId: string) =>
-        request<{ content_markdown: string }>("/ai/generate-cover-letter", {
+    parseCV: async (token: string, cvText: string) => {
+        const res = await fetch("/api/ai/parse-cv", {
             method: "POST",
-            token,
-            body: JSON.stringify({ application_id: applicationId }),
-        }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cv_text: cvText })
+        });
+        if (!res.ok) throw new Error("Parse failed");
+        return res.json() as Promise<{ skills: string[]; experience_years: number; education: unknown[]; tools: string[] }>;
+    },
 
-    matchScore: (token: string, jobId: string) =>
-        request<{ score: number; explanation: string }>("/ai/match-score", {
+    generateCoverLetter: async (token: string, applicationId: string) => {
+        const res = await fetch("/api/ai/generate-cover-letter", {
             method: "POST",
-            token,
-            body: JSON.stringify({ job_id: jobId }),
-        }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ application_id: applicationId })
+        });
+        if (!res.ok) throw new Error("Generation failed");
+        return res.json() as Promise<{ content_markdown: string }>;
+    },
+
+    matchScore: async (token: string, jobId: string) => {
+        const res = await fetch("/api/ai/match-score", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ job_id: jobId })
+        });
+        if (!res.ok) throw new Error("Match failed");
+        return res.json() as Promise<{ score: number; explanation: string }>;
+    },
 };
 
 // ── Scraper API ───────────────────────────────────────────────────────────

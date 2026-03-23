@@ -34,6 +34,18 @@ services:
     networks:
       - aerohire_net
 
+  # ── DB Setup / Migrations ───────────────────────────────────────────────
+  db_setup:
+    image: ghcr.io/${GITHUB_REPOSITORY:-aerohire/aerohire}/backend:${IMAGE_TAG:-latest}
+    command: prisma db push --schema=./packages/db/schema.prisma --accept-data-loss
+    environment:
+      DATABASE_URL: postgresql://aerohire:${POSTGRES_PASSWORD:-supersecret}@postgres:5432/aerohire
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - aerohire_net
+
   # ── Frontend ────────────────────────────────────────────────────────────
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY:-aerohire/aerohire}/frontend:${IMAGE_TAG:-latest}
@@ -78,6 +90,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db_setup:
+        condition: service_completed_successfully
     networks:
       - aerohire_net
 
@@ -100,6 +114,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      db_setup:
+        condition: service_completed_successfully
     networks:
       - aerohire_net
 
@@ -113,6 +129,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:-redissecret}@redis:6379/0
     depends_on:
       - celery_worker
+      - db_setup
     networks:
       - aerohire_net
 

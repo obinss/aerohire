@@ -52,8 +52,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Playwright browsers (Chromium only for scraping)
 RUN playwright install chromium --with-deps
 
+# Copy database schema for Prisma client generation
+COPY packages/db/schema.prisma ./packages/db/schema.prisma
+
+# Generate Prisma Python client
+RUN prisma generate --schema=./packages/db/schema.prisma
+
 # Copy application code
 COPY apps/api/ .
+
+# Ensure generated client is in the python path (if needed)
+# Usually prisma-client-py places it in the site-packages or local dir
 
 # Non-root user
 RUN addgroup --gid 1001 aerohire && \
